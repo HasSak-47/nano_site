@@ -14,7 +14,7 @@ from hashlib import pbkdf2_hmac
 
 ROOT = Path(__file__).resolve().parent
 SOURCE_DIR = ROOT / ".ignore" / "dist"
-OUTPUT_DIR = ROOT / "dist"
+OUTPUT_DIR = ROOT / "docs"
 PAYLOAD_PATH = OUTPUT_DIR / "site.enc.json"
 ENCRYPTED_DIR = OUTPUT_DIR / "encrypted"
 ITERATIONS = 600_000  # Bumped from 250k to meet OWASP recommendation for PBKDF2-SHA256
@@ -126,7 +126,7 @@ def main() -> None:
     parser.add_argument(
         "--clean",
         action="store_true",
-        help="Remove generated encrypted artifacts from dist/ without rebuilding.",
+        help="Remove generated encrypted artifacts from docs/ without rebuilding.",
     )
     args = parser.parse_args()
 
