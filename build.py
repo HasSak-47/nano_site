@@ -17,7 +17,7 @@ SOURCE_DIR = ROOT / ".ignore" / "dist"
 OUTPUT_DIR = ROOT / "dist"
 PAYLOAD_PATH = OUTPUT_DIR / "site.enc.json"
 ENCRYPTED_DIR = OUTPUT_DIR / "encrypted"
-ITERATIONS = 250_000
+ITERATIONS = 600_000  # Bumped from 250k to meet OWASP recommendation for PBKDF2-SHA256
 
 
 def load_dotenv_key(env_path: Path) -> str | None:
@@ -64,15 +64,17 @@ def collect_site_files(source_dir: Path) -> dict[str, dict[str, object]]:
     return files
 
 
-def encrypt_bytes(password: str, plaintext: bytes) -> tuple[bytes, bytes, bytes]:
-    salt = os.urandom(16)
-    iv = os.urandom(12)
-    key = pbkdf2_hmac("sha256", password.encode("utf-8"), salt, ITERATIONS, dklen=32)
-    ciphertext = AESGCM(key).encrypt(iv, plaintext, None)
-    return salt, iv, ciphertext
+def derive_key(password: str, salt: bytes) -> bytes:
+    """Derive a single AES-256 key from the password. Called once per build."""
+    return pbkdf2_hmac("sha256", password.encode("utf-8"), salt, ITERATIONS, dklen=32)
 
 
 def build_payload(password: str, files: dict[str, dict[str, object]]) -> dict[str, object]:
+    # Derive one key for all files — cracking one file gives nothing extra,
+    # and an attacker still has to run the full PBKDF2 to verify any guess.
+    salt = os.urandom(16)
+    key = derive_key(password, salt)
+
     manifest_files: dict[str, dict[str, object]] = {}
 
     for rel_path, info in files.items():
@@ -81,21 +83,26 @@ def build_payload(password: str, files: dict[str, dict[str, object]]) -> dict[st
         encrypted_path = OUTPUT_DIR / encrypted_rel_path
         encrypted_path.parent.mkdir(parents=True, exist_ok=True)
 
-        salt, iv, ciphertext = encrypt_bytes(password, plaintext)
+        # Each file still gets its own random IV — required for GCM security.
+        iv = os.urandom(12)
+        ciphertext = AESGCM(key).encrypt(iv, plaintext, None)
         encrypted_path.write_bytes(ciphertext)
 
         manifest_files[rel_path] = {
             "mime": info["mime"],
             "encrypted_path": encrypted_rel_path,
             "size": len(plaintext),
-            "kdf": "PBKDF2-SHA256",
-            "iterations": ITERATIONS,
-            "cipher": "AES-256-GCM",
-            "salt": base64.b64encode(salt).decode("ascii"),
             "iv": base64.b64encode(iv).decode("ascii"),
         }
 
-    return {"files": manifest_files}
+    return {
+        # KDF parameters are now global — one salt, one key for all files.
+        "kdf": "PBKDF2-SHA256",
+        "iterations": ITERATIONS,
+        "cipher": "AES-256-GCM",
+        "salt": base64.b64encode(salt).decode("ascii"),
+        "files": manifest_files,
+    }
 
 
 def prepare_output_dir(output_dir: Path) -> None:
