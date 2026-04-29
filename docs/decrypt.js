@@ -66,13 +66,7 @@ async function deriveKey(password, salt, iterations) {
   );
 }
 
-async function decryptFile(password, encryptedFile) {
-  const key = await deriveKey(
-    password,
-    base64ToBytes(encryptedFile.salt),
-    encryptedFile.iterations,
-  );
-
+async function decryptFile(key, encryptedFile) {
   const response = await fetch(new URL(encryptedFile.encrypted_path, window.location.href));
   if (!response.ok) {
     throw new Error(`Encrypted file not found: ${encryptedFile.encrypted_path}`);
@@ -95,11 +89,16 @@ async function decryptPayload(password) {
   }
 
   const payload = await response.json();
+  const key = await deriveKey(
+    password,
+    base64ToBytes(payload.salt),
+    payload.iterations,
+  );
   const manifestFiles = payload.files || {};
   const files = {};
 
   for (const [relativePath, encryptedFile] of Object.entries(manifestFiles)) {
-    const bytes = await decryptFile(password, encryptedFile);
+    const bytes = await decryptFile(key, encryptedFile);
     files[relativePath] = {
       mime: encryptedFile.mime || "application/octet-stream",
       bytes,
