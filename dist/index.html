@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Protected nanosite</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --color-red-800: #8f2920;
+            --color-gray-50: #fafafa;
+            --color-gray-100: #f3f4f6;
+            --color-gray-200: #e5e7eb;
+            --color-gray-500: #6b7280;
+            --color-gray-700: #374151;
+            --color-gray-900: #111827;
+            --color-gray-950: #030712;
+            --color-white: #ffffff;
+            --container-5xl: 64rem;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            min-height: 100vh;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            background: var(--color-gray-50);
+            color: var(--color-gray-900);
+            font-family: Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        main {
+            width: 100%;
+            padding: 1.5rem;
+        }
+
+        .unlock-card {
+            max-width: 28rem;
+            margin: 0 auto;
+            border: 1px solid var(--color-gray-200);
+            border-radius: 0.25rem;
+            padding: 1.5rem;
+            background: var(--color-white);
+            border-top: 2px solid var(--color-red-800);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 2rem;
+            line-height: 1.1;
+            font-weight: 600;
+            color: var(--color-gray-950);
+        }
+
+        .body-copy {
+            margin: 0.75rem 0 0;
+            line-height: 1.75;
+            color: var(--color-gray-500);
+        }
+
+        form {
+            display: grid;
+            gap: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--color-gray-900);
+        }
+
+        input {
+            width: 100%;
+            border: 1px solid var(--color-gray-200);
+            border-radius: 0.25rem;
+            padding: 0.875rem 1rem;
+            background: var(--color-white);
+            color: var(--color-gray-950);
+            font: inherit;
+        }
+
+        input:focus {
+            outline: 2px solid rgba(143, 41, 32, 0.18);
+            outline-offset: 2px;
+        }
+
+        button {
+            border: 0;
+            border-radius: 0.25rem;
+            padding: 0.875rem 1rem;
+            background: var(--color-red-800);
+            color: var(--color-white);
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #7a2018;
+        }
+
+        button[disabled] {
+            opacity: 0.7;
+            cursor: wait;
+        }
+
+        .status {
+            min-height: 1.5rem;
+            margin-top: 1rem;
+            color: var(--color-gray-500);
+        }
+
+        .status[data-variant="error"] {
+            color: #8f1d1d;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <section class="unlock-card" aria-labelledby="unlock-title">
+            <h1 id="unlock-title">Enter the password to view the site</h1>
+            <form id="unlock-form">
+                <div>
+                    <label for="password">Password</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password" required />
+                </div>
+                <button id="submit-button" type="submit">Decrypt site</button>
+            </form>
+            <p id="status" class="status" aria-live="polite"></p>
+        </section>
+    </main>
+    <script type="module" src="./decrypt.js"></script>
+</body>
+
+</html>
