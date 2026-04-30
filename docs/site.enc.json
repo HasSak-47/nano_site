@@ -22,12 +22,6 @@
       "size": 6259,
       "iv": "YqONZ4b8CGpBdOdf"
     },
-    "generic/Torch.png": {
-      "mime": "image/png",
-      "encrypted_path": "encrypted/generic/Torch.png.enc",
-      "size": 1336,
-      "iv": "pcEprKNwZmxe/s9v"
-    },
     "generic/Torch.svg": {
       "mime": "image/svg+xml",
       "encrypted_path": "encrypted/generic/Torch.svg.enc",
