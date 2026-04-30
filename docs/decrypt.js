@@ -13,6 +13,35 @@ let logoutTimerId = null;
 const ROUTER_HELPER = `
 <script>
 (() => {
+  const APP_ROOT = ${JSON.stringify(APP_ROOT)};
+  const stripRoot = (pathname) => {
+    if (pathname === APP_ROOT) return "/";
+    if (pathname.startsWith(APP_ROOT + "/")) {
+      return pathname.slice(APP_ROOT.length) || "/";
+    }
+    return pathname;
+  };
+
+  const prefixRoot = (pathname) => {
+    if (!pathname || pathname === "/") return APP_ROOT;
+    if (!pathname.startsWith("/")) return pathname;
+    if (pathname === APP_ROOT || pathname.startsWith(APP_ROOT + "/")) {
+      return pathname;
+    }
+    return APP_ROOT + pathname;
+  };
+
+  window.__NANOSITE_STRIP_ROOT__ = stripRoot;
+  window.__NANOSITE_APP_ROOT__ = APP_ROOT;
+
+  const originalPushState = window.history.pushState.bind(window.history);
+  window.history.pushState = (state, title, url) => {
+    if (typeof url === "string") {
+      return originalPushState(state, title, prefixRoot(url));
+    }
+    return originalPushState(state, title, url);
+  };
+
   const isDocumentRoute = (href) => {
     try {
       const url = new URL(href, window.location.origin);
@@ -32,7 +61,8 @@ const ROUTER_HELPER = `
 
     event.preventDefault();
     const url = new URL(href, window.location.origin);
-    window.history.pushState({}, "", url.pathname + url.search + url.hash);
+    const pathname = prefixRoot(stripRoot(url.pathname));
+    window.history.pushState({}, "", pathname + url.search + url.hash);
     window.dispatchEvent(new PopStateEvent("popstate"));
   });
 })();
@@ -199,6 +229,13 @@ function rewriteTextAsset(source, replacements) {
   return result;
 }
 
+function rewriteAppScript(source) {
+  return source.replaceAll(
+    "window.location.pathname",
+    "window.__NANOSITE_STRIP_ROOT__(window.location.pathname)",
+  );
+}
+
 function isTextLikeMimeType(mimeType) {
   if (mimeType === "image/svg+xml") {
     return false;
@@ -251,7 +288,9 @@ function createBlobUrlMap(files) {
     }
 
     const blobSource = rewriteTextAsset(
-      decodeUtf8(file.bytes),
+      mimeType.includes("javascript")
+        ? rewriteAppScript(decodeUtf8(file.bytes))
+        : decodeUtf8(file.bytes),
       replacements,
     );
     const blob = new Blob([blobSource], { type: mimeType });
