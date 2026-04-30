@@ -4,6 +4,10 @@ const submitButton = document.querySelector("#submit-button");
 const statusElement = document.querySelector("#status");
 
 const payloadUrl = new URL("./site.enc.json", window.location.href);
+const SESSION_KEY = "nanosite-session";
+const SESSION_DURATION_MS = 30 * 60 * 1000;
+
+let logoutTimerId = null;
 
 const ROUTER_HELPER = `
 <script>
@@ -46,6 +50,66 @@ function base64ToBytes(value) {
 
 function decodeUtf8(bytes) {
   return new TextDecoder().decode(bytes);
+}
+
+function isRootPath(pathname = window.location.pathname) {
+  return pathname === "/";
+}
+
+function redirectToRoot() {
+  window.location.replace("/");
+}
+
+function clearSession() {
+  window.localStorage.removeItem(SESSION_KEY);
+}
+
+function readSession() {
+  const raw = window.localStorage.getItem(SESSION_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const session = JSON.parse(raw);
+    if (!session.password || !session.expiresAt) {
+      clearSession();
+      return null;
+    }
+    if (Date.now() >= session.expiresAt) {
+      clearSession();
+      return null;
+    }
+    return session;
+  } catch {
+    clearSession();
+    return null;
+  }
+}
+
+function writeSession(password) {
+  const session = {
+    password,
+    expiresAt: Date.now() + SESSION_DURATION_MS,
+  };
+  window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  return session;
+}
+
+function refreshSession(password) {
+  return writeSession(password);
+}
+
+function scheduleLogout(expiresAt) {
+  if (logoutTimerId !== null) {
+    window.clearTimeout(logoutTimerId);
+  }
+
+  const delay = Math.max(0, expiresAt - Date.now());
+  logoutTimerId = window.setTimeout(() => {
+    clearSession();
+    redirectToRoot();
+  }, delay);
 }
 
 async function deriveKey(password, salt, iterations) {
@@ -135,12 +199,15 @@ function rewriteTextAsset(source, replacements) {
 }
 
 function isTextLikeMimeType(mimeType) {
+  if (mimeType === "image/svg+xml") {
+    return false;
+  }
+
   return (
     mimeType.startsWith("text/") ||
     mimeType.includes("javascript") ||
     mimeType.includes("json") ||
-    mimeType.includes("xml") ||
-    mimeType.includes("svg")
+    mimeType.includes("xml")
   );
 }
 
@@ -242,6 +309,13 @@ function renderUnlockedSite(bundle) {
   document.close();
 }
 
+async function unlockSite(password) {
+  const session = refreshSession(password);
+  scheduleLogout(session.expiresAt);
+  const bundle = await decryptPayload(password);
+  renderUnlockedSite(bundle);
+}
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -255,12 +329,29 @@ form.addEventListener("submit", async (event) => {
   setStatus("Decrypting site...");
 
   try {
-    const bundle = await decryptPayload(password);
-    setStatus("Unlocked.");
-    renderUnlockedSite(bundle);
+    await unlockSite(password);
   } catch (error) {
     console.error(error);
+    clearSession();
     setStatus("Wrong password or unreadable payload.", "error");
     submitButton.disabled = false;
   }
 });
+
+const session = readSession();
+if (session) {
+  passwordInput.value = session.password;
+  submitButton.disabled = true;
+  setStatus("Decrypting site...");
+  unlockSite(session.password).catch((error) => {
+    console.error(error);
+    clearSession();
+    submitButton.disabled = false;
+    setStatus("Wrong password or unreadable payload.", "error");
+    if (!isRootPath()) {
+      redirectToRoot();
+    }
+  });
+} else if (!isRootPath()) {
+  redirectToRoot();
+}
