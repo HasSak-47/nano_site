@@ -6,6 +6,7 @@ const statusElement = document.querySelector("#status");
 const payloadUrl = new URL("./site.enc.json", window.location.href);
 const SESSION_KEY = "nanosite-session";
 const SESSION_DURATION_MS = 30 * 60 * 1000;
+const APP_ROOT = "/nano_site";
 
 let logoutTimerId = null;
 
@@ -53,11 +54,11 @@ function decodeUtf8(bytes) {
 }
 
 function isRootPath(pathname = window.location.pathname) {
-  return pathname === "/";
+  return pathname === APP_ROOT || pathname === `${APP_ROOT}/`;
 }
 
 function redirectToRoot() {
-  window.location.replace("/");
+  window.location.replace(APP_ROOT);
 }
 
 function clearSession() {
